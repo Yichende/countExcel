@@ -1,0 +1,8 @@
+.displayArea {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  width: 100vw;
+  box-sizing: border-box;
+  overflow: hidden;
+}
