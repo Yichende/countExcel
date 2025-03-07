@@ -12,6 +12,28 @@ export async function Test() {
   });
 }
 
+/**
+ * Fetch重试机制
+ * @param url Fetch url
+ * @param options Fetch 参数
+ * @param retries 重试次数
+ * @returns 返回结果
+ */
+export async function fetchWithRetry (url, options, retries = 3) {
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response;
+  } catch (err) {
+    if (retries > 0) {
+      console.log(`剩余重试次数: ${retries}`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    throw err;
+  }
+};
+
 export async function startOllama() {
   return await request("/api/startOllama", {
     method: "POST",
@@ -31,3 +53,5 @@ export async function askAI(markdownTable, question) {
     }
   );
 }
+
+

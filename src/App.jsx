@@ -1,7 +1,7 @@
 import ExcelUploader from "./component/ExcelUploader";
 import TerminalInterface from "./component/TerminalInterface";
 import "./App.css";
-import { askAI, Test, startOllama } from "./services/api";
+import { askAI, Test, startOllama, fetchWithRetry } from "./services/api";
 import { excelToMarkdown, markdownToExcel } from "./utils/excel2Markdown";
 import axios from "axios";
 
@@ -46,14 +46,17 @@ function App() {
 
     try {
       // 步骤1：初始化会话
-      const initResponse = await fetch(`${API_BASE_URL}/api/init-stream`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          markdownTable,
-          question,
-        }),
-      });
+      const initResponse = await fetchWithRetry(
+        `${API_BASE_URL}/api/init-stream`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            markdownTable,
+            question,
+          }),
+        }
+      );
 
       // 增强响应处理
       if (!initResponse.ok) {
@@ -65,8 +68,10 @@ function App() {
 
       // 步骤2：建立流式连接
       return new Promise((resolve, reject) => {
-        const eventSource = new EventSource(`${API_BASE_URL}/api/stream/${sessionId}`);
-        
+        const eventSource = new EventSource(
+          `${API_BASE_URL}/api/stream/${sessionId}`
+        );
+
         eventSource.onopen = () => {
           console.log("连接已建立");
         };
@@ -75,17 +80,23 @@ function App() {
 
         eventSource.onmessage = (e) => {
           try {
+            console.log("[原始事件数据]", e.data); // test!
+
             if (e.data === "[DONE]") {
+              console.log("[流结束] 最终内容长度:", buffer.length); // test!
               eventSource.close();
               return resolve(buffer);
             }
 
-            const { token, error } = JSON.parse(e.data);
-            if (error) throw new Error(error);
+            const payload = JSON.parse(e.data);
+            console.log("[解析后payload]", payload); // test!
 
-            buffer += token;
-            console.log("实时更新:", buffer);
+            if (payload.error) throw new Error(payload.error);
+
+            buffer += payload.token;
+            console.log("[实时缓冲] 当前长度:", buffer.length, "内容:", buffer); // test!
           } catch (err) {
+            console.error('[消息处理异常]', err); // test!
             eventSource.close();
             reject(err);
           }
