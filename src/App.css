@@ -3,6 +3,15 @@
   flex-direction: row;
   justify-content: flex-start;
   width: 100vw;
+  height: 100vh;
   box-sizing: border-box;
   overflow: hidden;
+}
+
+.bufferDisplay {
+  flex-grow: 1;
+  background-color: lightblue;
+  display: flex;
+  align-items: start;
+  justify-content: flex-start;
 }

@@ -4,6 +4,7 @@ import "./App.css";
 import { askAI, Test, startOllama, fetchWithRetry } from "./services/api";
 import { excelToMarkdown, markdownToExcel } from "./utils/excel2Markdown";
 import axios from "axios";
+import { useRef } from "react";
 
 function App() {
   const MAX_RETRY = 2;
@@ -66,50 +67,105 @@ function App() {
 
       const { sessionId } = await initResponse.json();
 
-      // 步骤2：建立流式连接
-      return new Promise((resolve, reject) => {
+      // 使用ref保持持久化引用
+      const eventSourceRef = useRef(null);
+      const bufferRef = useRef("");
+      const fullResponseRef = useRef("");
+      const packetCountRef = useRef(0);
+
+      // 核心处理函数
+      const startStream = (sessionId, callbacks) => {
+        // 清理现有连接
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          console.warn("已有活跃连接，先关闭旧连接");
+        }
+
+        // 初始化状态
+        bufferRef.current = "";
+        fullResponseRef.current = "";
+        packetCountRef.current = 0;
+
+        // 创建新连接
         const eventSource = new EventSource(
           `${API_BASE_URL}/api/stream/${sessionId}`
         );
+        eventSourceRef.current = eventSource;
 
-        eventSource.onopen = () => {
-          console.log("连接已建立");
-        };
-
-        let buffer = "";
-
-        eventSource.onmessage = (e) => {
+        // 消息处理器
+        const handleMessage = (event) => {
           try {
-            console.log("[原始事件数据]", e.data); // test!
+            packetCountRef.current++;
 
-            if (e.data === "[DONE]") {
-              console.log("[流结束] 最终内容长度:", buffer.length); // test!
+            // 处理结束标记
+            if (event.data === "[DONE]") {
+              flushBuffer(callbacks);
               eventSource.close();
-              return resolve(buffer);
+              if (callbacks.onComplete) {
+                callbacks.onComplete(fullResponseRef.current);
+              }
+              return;
             }
 
-            const payload = JSON.parse(e.data);
-            console.log("[解析后payload]", payload); // test!
+            // 解析数据包
+            const jsonData = JSON.parse(event.data);
 
-            if (payload.error) throw new Error(payload.error);
+            // 错误处理
+            if (jsonData.error) {
+              eventSource.close();
+              if (callbacks.onError) {
+                callbacks.onError(new Error(jsonData.error));
+              }
+              return;
+            }
 
-            buffer += payload.token;
-            console.log("[实时缓冲] 当前长度:", buffer.length, "内容:", buffer); // test!
-          } catch (err) {
-            console.error('[消息处理异常]', err); // test!
-            eventSource.close();
-            reject(err);
+            // 流式数据处理
+            if (jsonData.token) {
+              bufferRef.current += jsonData.token;
+
+              // 触发渲染更新（每5字符或标点符号时）
+              if (
+                packetCountRef.current % 5 === 0 ||
+                /[\n。？！]/.test(jsonData.token)
+              ) {
+                flushBuffer(callbacks);
+              }
+            }
+          } catch (error) {
+            console.error("[数据解析错误]", error);
+            if (callbacks.onError) {
+              callbacks.onError(error);
+            }
           }
         };
 
-        eventSource.onerror = () => {
+        // 错误处理器
+        const handleError = (event) => {
+          console.error("[SSE连接错误]", event);
           eventSource.close();
-          reject(new Error("流连接异常"));
+          if (callbacks.onError) {
+            callbacks.onError(new Error("SSE连接异常"));
+          }
         };
-      });
+
+        // 绑定监听器
+        eventSource.addEventListener("message", handleMessage);
+        eventSource.addEventListener("error", handleError);
+
+        // 返回终止方法
+        return () => {
+          eventSource.close();
+          flushBuffer(callbacks);
+          console.log("[手动终止] 流式请求");
+        };
+      };
+
+      
     } catch (err) {
       throw new Error(`请求失败: ${err.message}`);
     }
+
+    return <div>请查看浏览器控制台输出</div>;
   };
 
   const executeStreamDemo = async () => {
@@ -133,7 +189,7 @@ function App() {
   return (
     <div className="displayArea">
       <ExcelUploader />
-      <div>
+      <div className="bufferDisplay">
         <TerminalInterface />
         <button onClick={startServe}>启动服务</button>
         <button onClick={() => handleTestRequest(1)}>测试</button>
