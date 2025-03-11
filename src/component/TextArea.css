@@ -1,0 +1,19 @@
+  .readonly-textarea {
+    flex: content;
+    width: 60vw;
+    margin: 10px 5px;
+    padding: 12px;
+    background-color: #f8f9fa; /* 柔和的背景色 */
+    border-radius: 8px; /* 圆角边框 */
+    border: 1px solid #ccc; /* 细边框 */
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); /* 轻微阴影 */
+    max-height: 70vh; /* 最高高度 200px */
+    overflow-y: auto; /* 超出部分滚动 */
+  }
+
+  .content-box {
+    white-space: pre-wrap; /* 识别 \n 换行 */
+    font-size: 16px;
+    color: #333;
+    line-height: 1.5;
+  }

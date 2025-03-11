@@ -42,6 +42,13 @@ export async function startOllama() {
   });
 }
 
+export async function stopOllama() {
+  return await request("/api/shutdownOllama", {
+    method: "POST",
+    skipErrorHandler: true, // 是否跳过全局错误处理
+  });
+}
+
 export async function askAI(markdownTable, question) {
   return await request("/api/askAi", {
     method: "POST",
@@ -72,8 +79,8 @@ export function useStreamHandler() {
     isNormalClosureRef.current = false;
     // 清理现有连接
     if (eventSourceRef.current) {
-      // eventSourceRef.current.close();
-      safeClose();
+      eventSourceRef.current.close();
+      // safeClose();
       eventSourceRef.current = null;
       console.warn("Closing existing connection");
     }

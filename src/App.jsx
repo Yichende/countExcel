@@ -1,7 +1,7 @@
 import ExcelUploader from "./component/ExcelUploader";
 import TerminalInterface from "./component/TerminalInterface";
 import "./App.css";
-import { askAI, Test, startOllama, fetchWithRetry } from "./services/api";
+import { askAI, Test, startOllama, fetchWithRetry, stopOllama } from "./services/api";
 import { excelToMarkdown, markdownToExcel } from "./utils/excel2Markdown";
 import axios from "axios";
 import { useRef } from "react";
@@ -159,8 +159,6 @@ function App() {
           console.log("[手动终止] 流式请求");
         };
       };
-
-      
     } catch (err) {
       throw new Error(`请求失败: ${err.message}`);
     }
@@ -186,14 +184,26 @@ function App() {
     }
   };
 
+  const stopServe = async () => {
+    try {
+      const res = await stopOllama();
+      console.log(res);
+    } catch (err) {
+      console.log(err)
+    }
+  }
+
   return (
     <div className="displayArea">
       <ExcelUploader />
       <div className="bufferDisplay">
         <TerminalInterface />
-        <button onClick={startServe}>启动服务</button>
-        <button onClick={() => handleTestRequest(1)}>测试</button>
-        <button onClick={() => executeStreamDemo()}>流式测试</button>
+        <div>
+          <button onClick={startServe}>启动服务</button>
+          <button onClick={stopServe}>关闭服务</button>
+          <button onClick={() => handleTestRequest(1)}>测试</button>
+          <button onClick={() => executeStreamDemo()}>流式测试</button>
+        </div>
       </div>
     </div>
   );

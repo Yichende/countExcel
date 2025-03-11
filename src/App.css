@@ -9,9 +9,9 @@
 }
 
 .bufferDisplay {
-  flex-grow: 1;
+  /* flex-grow: 1; */
+  width: 70vw;
   background-color: lightblue;
-  display: flex;
   align-items: start;
   justify-content: flex-start;
 }

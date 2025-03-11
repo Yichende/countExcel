@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useStreamHandler } from "../services/api";
+import Textarea from "./textArea";
 
 function TerminalInterface() {
   const [input, setInput] = useState("");
@@ -9,12 +10,12 @@ function TerminalInterface() {
   const [error, setError] = useState(null);
   const { startStream, streamDebug } = useStreamHandler();
 
-  useEffect(() => {
-    const interval = setInterval(() => { // test!
-      console.log('连接状态:', streamDebug());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // useEffect(() => {
+  //   const interval = setInterval(() => { // test!
+  //     console.log('连接状态:', streamDebug());
+  //   }, 1000);
+  //   return () => clearInterval(interval);
+  // }, []);
 
   // 初始化请求并启动流
   const handleClick = async () => {
@@ -34,7 +35,7 @@ function TerminalInterface() {
       | 2023-08 | 耳机         | 5,100            | -3.2       | 北京     | 是             |
       | 2023-07 | 手机           | 4,900            | -6.5       | 上海     | 否             |
       | 2023-06 | 智能耳机     | 8,100            | 12.4       | 全国     | 是             |`;
-    const question = "计算总销量";
+    const question = "计算总销量，不需要考虑增长率";
 
     try {
       // 第一步：获取sessionId
@@ -59,7 +60,10 @@ function TerminalInterface() {
       // 第二步：启动流式传输
       const stopStream = startStream(sessionId, {
         onData: (token, fullText) => {
-          setOutput(fullText);
+          const normalizedContent = fullText
+            .replace(/\\n/g, "\n") // 处理转义换行符
+            .replace(/\r\n/g, "\n"); // 统一换行符格式
+          setOutput(normalizedContent);
           console.log("[Stream token]", token);
         },
         onError: (err) => {
@@ -104,9 +108,11 @@ function TerminalInterface() {
       </button>
       {error && <div style={{ color: "red" }}>错误: {error}</div>}
 
-      <div className="output">
+      <div>
         <h3>实时响应：</h3>
-        <pre>{output}</pre>
+        {/* <pre>{output}</pre> */}
+        {output && <Textarea content={output} />}
+        {/* <Textarea content={output}/> */}
       </div>
     </div>
   );
